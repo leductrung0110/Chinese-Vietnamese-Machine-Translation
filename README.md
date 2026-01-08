@@ -216,5 +216,3 @@ translate_sentence(sentence)
 ### 📄 License
 
 This project is for research and educational purposes. The project's dataset was collected from the Netflix platform; if you need to use it, please send a direct message via email for support.
-
-```
