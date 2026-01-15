@@ -22,7 +22,7 @@ Dự án này xây dựng một hệ thống **Dịch máy Neural (NMT)** chuyê
 1.  **Cấu trúc câu bị phân mảnh (Fragmented Sentences):** Do giới hạn thời gian/không gian hiển thị của phụ đề.
 2.  **Rào cản ngôn ngữ cổ (Archaic Terminology):** Xử lý các từ Hán-Việt, xưng hô phong kiến (Trẫm, Bệ hạ, Thần thiếp...) và thành ngữ.
 
-Hệ thống sử dụng kiến trúc **Transformer** với mô hình nền `Helsinki-NLP/opus-mt-zh-vi`, kết hợp với quy trình tiền xử lý dữ liệu thông minh (**Context-Aware Pre-processing Pipeline**).
+Hệ thống sử dụng kiến trúc **Transformer** đa ngôn ngữ tiên tiến với mô hình nền `facebook/nllb-200-distilled-600M` (No Language Left Behind), kết hợp với quy trình tiền xử lý dữ liệu thông minh (**Context-Aware Pre-processing Pipeline**).
 
 ### 🚀 Tính năng nổi bật (Key Features)
 
@@ -41,20 +41,21 @@ Dự án đề xuất hai kỹ thuật cốt lõi để xử lý dữ liệu ph�
 
 ### 📊 Kết quả (Results)
 
-Mô hình được huấn luyện và đánh giá trên tập dữ liệu **512,580 cặp câu** từ Netflix.
+Mô hình được huấn luyện và đánh giá trên tập dữ liệu chất lượng cao gồm **512,580 cặp câu** được thu thập và xử lý từ Netflix.
 
-| Phương pháp | BLEU Score (Test Set) |
-| :--- | :--- |
-| **ISS + SBA** | **11.47** |
-| Google Translate (Baseline) | *Thấp hơn về độ chính xác ngữ cảnh* |
+| Phương pháp | BLEU Score (Test Set) | Ghi chú |
+| :--- | :--- | :--- |
+| NLLB-200 | **29.35** | *Kết quả tốt nhất* |
+| Helsinki-NLP | 11.66 | |
+| mBART-50 | 4.25 | *Kết quả dịch thực tế tốt nhất* |
 
 **So sánh định tính:**
 
-* **Input:** 雷霆 (Lôi đình)
-    * *Google Translate:* Sấm sét ❌
-    * *Ours:* Lôi Đình ✅
+* **Input:** 皇上，臣妾真的不知道该怎么办了。
+    * *Google Translate:* Hoàng thượng, vợ lẽ thực sự không biết phải làm gì. ❌
+    * *Ours (NLLB-200):* Hoàng thượng, thần thiếp thật sự không biết phải làm sao. ✅
 * **Input:** 假如 他是在等什么人 (Giả như hắn đang đợi ai đó)
-    * *Google Translate:* Nếu anh ta đang đợi... (Sai xưng hô) ❌
+    * *Google Translate:* Nếu anh ta đang đợi... (Sai xưng hô hiện đại) ❌
     * *Ours:* Nếu hắn đang đợi... (Đúng sắc thái cổ trang) ✅
 
 ### 🛠 Cài đặt (Installation)
@@ -76,35 +77,38 @@ pip install transformers datasets sacremoses pysrt underthesea \
 │   ├── film_A/
 │   │   ├── zh/             # Phụ đề tiếng Trung
 │   │   └── vi/             # Phụ đề tiếng Việt
-├── workspace/
+├── workspace_netflix-nllb/
 │   ├── chinese-hanviet-cognates.tsv  # Từ điển Hán-Việt
-│   ├── final_model/        # Thư mục lưu model sau khi train
-│   └── zh-vi-historical-model/ # Checkpoints
-├── zh_vi_auto.ipynb        # Source code chính (Jupyter Notebook)
+│   ├── final_model/        # Thư mục lưu model NLLB sau khi train
+│   └── eval_results.json   # Kết quả đánh giá
+├── zh_vi_netflix-nllb.ipynb # Source code chính (Jupyter Notebook)
 └── README.md
 
 ```
 
 ### 💻 Hướng dẫn sử dụng (Usage)
 
-Quy trình chạy file `zh_vi_auto.ipynb` bao gồm các bước:
+Quy trình chạy file notebook bao gồm các bước:
 
 1. **Mount Google Drive:** Kết nối với nơi lưu trữ dữ liệu.
 2. **Cấu hình:** Thiết lập đường dẫn đến thư mục `data` và file từ điển.
 3. **Tiền xử lý (Preprocessing):** Chạy hàm `align_subtitles_by_time` (ISS) và `sentence_boundary_augmentation` (SBA).
-4. **Chuẩn bị Dataset:** Code sẽ tự động chia tập dữ liệu thành Train (70%), Validation (15%), Test (15%).
+4. **Chuẩn bị Dataset:** Code sẽ tự động chia tập dữ liệu thành Train, Validation, Test.
 5. **Huấn luyện (Training):**
-* Mô hình: `Helsinki-NLP/opus-mt-zh-vi`
-* Epochs: 5, Batch size: 16, Learning rate: 1e-5, max_length: 128.
+* Mô hình: `facebook/nllb-200-distilled-600M`
+* Epochs: 3
+* Batch size: 4 (kết hợp Gradient Accumulation = 8)
+* Learning rate: 1e-5
+* max_length: 128
 
 
 6. **Đánh giá & Demo:** Sử dụng hàm `translate_sentence` để nhập câu tùy ý và kiểm tra kết quả.
 
 ```python
 # Ví dụ chạy thử
-sentence = "皇上，臣妾真的不知道该怎么办了。"
+sentence = "师兄，我们一起下山吧。"
 translate_sentence(sentence)
-# Output: Hoàng thượng, thần thiếp thật sự không biết phải làm sao.
+# Output: Sư huynh, chúng ta cùng xuống núi đi.
 
 ```
 
@@ -137,7 +141,7 @@ This project develops a specialized **Neural Machine Translation (NMT)** system 
 1. **Fragmented Sentences:** Caused by subtitle display time/space constraints.
 2. **Archaic Terminology:** Handling Sino-Vietnamese terms, feudal honorifics (e.g., Your Majesty, Concubine...), and idioms.
 
-The system utilizes the **Transformer** architecture with the `Helsinki-NLP/opus-mt-zh-vi` baseline model, integrated with a **Context-Aware Pre-processing Pipeline**.
+The system utilizes the state-of-the-art **NLLB-200 (No Language Left Behind)** architecture (`facebook/nllb-200-distilled-600M`) as the baseline model, integrated with a **Context-Aware Pre-processing Pipeline**.
 
 ### 🚀 Key Features
 
@@ -159,22 +163,24 @@ We propose two core techniques for processing subtitle data before training:
 
 ### 📊 Results
 
-The model was trained and evaluated on a dataset of **512,580 sentence pairs** from Netflix.
+The model was trained and evaluated on a high-quality dataset of **512,580 sentence pairs** collected from Netflix.
 
-| Method | BLEU Score (Test Set) |
-| --- | --- |
-| **ISS + SBA** | **11.47** |
+| Method | BLEU Score (Test Set) | Note |
+| --- | --- | --- |
+| NLLB-200 | **29.35** | *Best Performance* |
+| Helsinki-NLP | 11.66 |  |
+| mBART-50 | 4.25 | *Best actual translation results* |
 
 **Qualitative Comparison:**
 
-* **Input:** 雷霆 (Thunder/Lôi đình)
-* *Google Translate:* Sấm sét (Literal meaning) ❌
-* *Ours:* Lôi Đình (Sino-Vietnamese term) ✅
+* **Input:** 皇上，臣妾真的不知道该怎么办了。 (Your Majesty, I/concubine really don't know what to do.)
+* *Google Translate:* ...vợ lẽ... (Incorrect term "vợ lẽ") ❌
+* *Ours (NLLB-200):* Hoàng thượng, thần thiếp... (Correct honorific "thần thiếp") ✅
 
 
 * **Input:** 假如 他是在等什么人 (If he is waiting for someone)
-* *Google Translate:* Nếu anh ta đang đợi... (Modern/Neutral pronoun) ❌
-* *Ours:* Nếu hắn đang đợi... (Archaic/Appropriate nuance) ✅
+* *Google Translate:* Nếu anh ta đang đợi... (Modern pronoun "anh ta") ❌
+* *Ours:* Nếu hắn đang đợi... (Archaic pronoun "hắn") ✅
 
 
 
@@ -192,18 +198,25 @@ pip install transformers datasets sacremoses pysrt underthesea \
 
 ### 💻 Usage
 
-Steps to run the `zh_vi_auto.ipynb` notebook:
+Steps to run the `zh_vi_netflix-nllb.ipynb` notebook:
 
 1. **Mount Google Drive:** Connect to your data storage.
 2. **Configuration:** Set paths to the `data` directory and dictionary file.
 3. **Preprocessing:** Run `align_subtitles_by_time` (ISS) and `sentence_boundary_augmentation` (SBA).
-4. **Training:** Fine-tune the model with `Epochs: 5`, `Batch size: 16`, `Learning rate: 1e-5`, `max_length: 128`.
+4. **Training:** Fine-tune the model with:
+* Model: `facebook/nllb-200-distilled-600M`
+* Epochs: 3
+* Batch size: 4 (with Gradient Accumulation Steps = 8)
+* Learning rate: 1e-5
+* max_length: 128
+
+
 5. **Demo:** Use the `translate_sentence` function to test custom inputs.
 
 ```python
-sentence = "皇上，臣妾真的不知道该怎么办了。"
+sentence = "师兄，我们一起下山吧。"
 translate_sentence(sentence)
-# Output: Hoàng thượng, thần thiếp thật sự không biết phải làm sao.
+# Output: Sư huynh, chúng ta cùng xuống núi đi.
 
 ```
 
@@ -216,3 +229,7 @@ translate_sentence(sentence)
 ### 📄 License
 
 This project is for research and educational purposes. The project's dataset was collected from the Netflix platform; if you need to use it, please send a direct message via email for support.
+
+```
+
+```
